@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 interface CustomError extends Error {
     status?: number;
@@ -34,8 +34,8 @@ const sendErrorResponse = async (err: CustomError, res: Response): Promise<void>
 
 const asyncHandler = (
     fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
-): RequestHandler => {
-    return async (req, res, next) => {
+) => {
+    return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         console.log(`[${new Date().toISOString()}] - Request to ${req.method} ${req.originalUrl} started`);
 
         try {
@@ -44,7 +44,7 @@ const asyncHandler = (
         } catch (err) {
             console.error(`[${new Date().toISOString()}] - Error in request to ${req.method} ${req.originalUrl}:`, err);
             await sendErrorResponse(err as CustomError, res);
-            res.json({ success: false, message: 'Error', err }); // removed `return`
+            res.json({ success: false, message: 'Error', err }); // just don't return it
         }
     };
 };
