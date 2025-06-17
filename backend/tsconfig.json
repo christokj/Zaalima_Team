@@ -1,0 +1,24 @@
+{
+    "compilerOptions": {
+        "target": "ES2020", // Modern JS target
+        "module": "commonjs", // Node-style module system
+        "moduleResolution": "node", // Resolve modules like Node.js
+        "rootDir": "./src", // Source TypeScript files
+        "outDir": "./dist", // Compiled JavaScript output
+        "strict": true, // Enable all strict type checks
+        "esModuleInterop": true, // Allow default imports from CommonJS
+        "resolveJsonModule": true, // Import .json files
+        "types": [
+            "node"
+        ], // Add Node.js type declarations
+        "forceConsistentCasingInFileNames": true, // Avoid import case mismatches
+        "skipLibCheck": true // Speed up build by skipping library checks
+    },
+    "include": [
+        "src/**/*.ts"
+    ], // Include all TS files in src/
+    "exclude": [
+        "node_modules",
+        "dist"
+    ] // Don't compile output or dependencies
+}
