@@ -4,13 +4,14 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db';
 import apiRouter from './routes/index'; // Adjust this import path based on your router file
+import { ENV } from './config/env';
 
 // Load environment variables
 dotenv.config();
 
 // Validate PORT exists
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : null;
-if (!PORT) {
+// const PORT = process.env.PORT ? parseInt(process.env.PORT) : null;
+if (!ENV.PORT) {
     throw new Error('PORT is not defined in environment variables.');
 }
 
@@ -34,13 +35,11 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api", apiRouter); // replace `apiRouter` with your actual router if named differently
 
 // 404 Handler
-app.all("*", (req: Request, res: Response, next: NextFunction) => {
-    if (!res.headersSent) {
-        res.status(404).json({ message: "Endpoint does not exist" });
-    }
+app.use((req: Request, res: Response, next: NextFunction) => {
+    res.status(404).json({ message: "Endpoint does not exist" });
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+app.listen(ENV.PORT, () => {
+    console.log(`Server is running on port ${ENV.PORT}`);
 });
