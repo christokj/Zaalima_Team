@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema, Model } from 'mongoose';
 
-// Define TypeScript interface for User document
+// Define TypeScript interface for Public document
 export interface IUser extends Document {
     username: string;
     name: string;
@@ -11,7 +11,7 @@ export interface IUser extends Document {
     updatedAt?: Date;
 }
 
-// Define Mongoose schema
+// Define Mongoose schema for Public    
 const userSchema: Schema<IUser> = new Schema(
     {
         username: { type: String, unique: true, required: true },
