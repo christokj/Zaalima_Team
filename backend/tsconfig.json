@@ -8,6 +8,10 @@
         "strict": true, // Enable all strict type checks
         "esModuleInterop": true, // Allow default imports from CommonJS
         "resolveJsonModule": true, // Import .json files
+        "typeRoots": [
+            "./node_modules/@types",
+            "./types"
+        ], // streamifier
         "types": [
             "node"
         ], // Add Node.js type declarations

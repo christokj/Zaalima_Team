@@ -3,14 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db';
-import apiRouter from './routes/index'; // Adjust this import path based on your router file
+import apiRouter from './routes/index';
 import { ENV } from './config/env';
+import helmet from 'helmet';
 
 // Load environment variables
 dotenv.config();
 
 // Validate PORT exists
-// const PORT = process.env.PORT ? parseInt(process.env.PORT) : null;
 if (!ENV.PORT) {
     throw new Error('PORT is not defined in environment variables.');
 }
@@ -18,8 +18,14 @@ if (!ENV.PORT) {
 // Initialize app
 const app = express();
 
+const allowedOrigin = ENV.VITE_SERVER; // Vite dev server
+
 // Middlewares
-app.use(cors());
+app.use(helmet());
+app.use(cors({
+    origin: allowedOrigin,
+    credentials: true, // ⬅️  For cookies/headers
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,7 +38,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 // API routes
-app.use("/api", apiRouter); // replace `apiRouter` with your actual router if named differently
+app.use("/api", apiRouter);
 
 // 404 Handler
 app.use((req: Request, res: Response, next: NextFunction) => {
