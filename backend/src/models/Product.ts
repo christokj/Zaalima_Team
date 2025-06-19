@@ -18,9 +18,9 @@ export interface IProduct extends Document {
 const ProductSchema: Schema = new Schema(
     {
         title: { type: String, required: true },
-        description: { type: String },
+        description: { type: String, required: true },
         price: { type: Number, required: true },
-        category: { type: String },
+        category: { type: String, required: true },
         rating: { type: Number, default: 0 },
         reviews: [
             {

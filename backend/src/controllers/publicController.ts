@@ -7,6 +7,8 @@ import { Types } from 'mongoose';
 import cloudinary from '../config/cloudinary';
 import streamifier from 'streamifier';
 import Product from '../models/Product';
+import { productSchema } from '../validations/productValidation';
+import { signUpSchema } from '../validations/signUpValidation';
 
 // Types for JWT payload
 interface JwtPayload {
@@ -15,9 +17,20 @@ interface JwtPayload {
 
 // Signup
 export const signUp = async (req: Request, res: Response): Promise<void> => {
-    const { username, name, age, mobile, password } = req.body;
     try {
-        const existing = await User.findOne({ username });
+        // Zod validation
+        const parsedData = signUpSchema.safeParse(req.body);
+        if (!parsedData.success) {
+            res.status(400).json({
+                success: false,
+                message: parsedData.error.errors.map(err => err.message).join(', '),
+            });
+            return;
+        }
+
+        const { username, name, age, mobile, password } = parsedData.data;
+
+        const existing = await User.findOne({ username }).lean();
         if (existing) {
             res.status(400).json({ success: false, message: 'Username already exists' });
             return;
@@ -36,9 +49,12 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 // Login
 export const login = async (req: Request, res: Response): Promise<void> => {
     const { username, password } = req.body;
-    console.log("first ");
+    if (!username || !password) {
+        res.status(400).json({ success: false, message: 'Username and password are required' });
+        return;
+    }
     try {
-        const user = await User.findOne({ username });
+        const user = await User.findOne({ username }).lean();
         if (!user) {
             res.status(400).json({ success: false, message: 'Invalid username or password' });
             return;
@@ -91,43 +107,128 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, message: 'Logout successful' });
 };
 
+
+
+// Extend Request type
+interface MulterRequest extends Request {
+    file: Express.Multer.File;
+}
+
+export const uploadImage = async (
+    req: Request,
+    res: Response
+): Promise<void> => {
+    const multerReq = req as MulterRequest;
+
+    if (!multerReq.file) {
+        res.status(400).json({ success: false, message: 'No file uploaded' });
+        return;
+    }
+
+    const buffer = multerReq.file.buffer;
+
+    const streamUpload = () => {
+        return new Promise<any>((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                { folder: 'zaalima' },
+                (error, result) => {
+                    if (result) resolve(result);
+                    else reject(error);
+                }
+            );
+            streamifier.createReadStream(buffer).pipe(stream);
+        });
+    };
+
+    try {
+        const result = await streamUpload();
+        res.status(200).json({ success: true, imageUrl: result.secure_url });
+    } catch (error: any) {
+        res.status(500).json({
+            success: false,
+            message: 'Upload failed',
+            error: error?.message || 'Unknown error',
+        });
+    }
+};
+
 export const uploadProduct = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { title, description, price, category, rating, reviews } = req.body;
-        const file = req.file;
+        const parsed = productSchema.safeParse({
+            ...req.body,
+            reviews: typeof req.body.reviews === 'string' ? JSON.parse(req.body.reviews) : req.body.reviews,
+        });
 
-        if (!file) {
-            res.status(400).json({ success: false, message: 'No file uploaded' });
+        if (!parsed.success) {
+            res.status(400).json({
+                success: false,
+                message: 'Validation failed',
+                errors: parsed.error.flatten().fieldErrors,
+            });
             return;
         }
 
-        const result = await new Promise<any>((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-                { resource_type: 'image' },
-                (error, result) => {
-                    if (error) reject(error);
-                    else resolve(result);
-                }
-            );
-
-            streamifier.createReadStream(file.buffer).pipe(stream);
-        });
+        const productData = parsed.data;
 
         const product = new Product({
-            title,
-            description,
-            price: parseFloat(price),
-            category,
-            rating: parseFloat(rating),
-            reviews: JSON.parse(reviews),
-            photoUrl: result.secure_url,
+            ...productData,
         });
 
         await product.save();
 
         res.status(200).json({ success: true, message: 'Product uploaded successfully' });
     } catch (err) {
-        console.error(err);
         res.status(500).json({ success: false, error: 'Upload failed' });
+    }
+};
+
+function extractPublicId(secureUrl: string): string {
+    const parts = secureUrl.split('/');
+    const filename = parts.pop(); // e.g., abc123.jpg
+    const folder = parts.pop();   // e.g., your_folder
+    const nameOnly = filename?.replace(/\.[^/.]+$/, ''); // abc123
+    return `${folder}/${nameOnly}`;
+}
+
+export const deleteImage = async (req: Request, res: Response): Promise<void> => {
+    const { secureUrl } = req.body;
+
+    if (!secureUrl) {
+        res.status(400).json({ success: false, message: 'secureUrl is required' });
+        return;
+    }
+
+    try {
+        const publicId = extractPublicId(secureUrl);
+        const result = await cloudinary.uploader.destroy(publicId);
+        res.status(200).json({ success: true, message: 'Image deleted', result });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Image deletion failed', error: err });
+    }
+};
+
+export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+
+    try {
+        const product = await Product.findById(id).select('photoUrl').lean();;
+
+        if (!product) {
+            res.status(404).json({ success: false, message: 'Product not found' });
+            return;
+        }
+
+        // Delete image from Cloudinary
+        if (product.photoUrl) {
+            const publicId = extractPublicId(product.photoUrl);
+            await cloudinary.uploader.destroy(publicId);
+        }
+
+        // Delete product from MongoDB
+        await Product.findByIdAndDelete(id);
+
+        res.status(200).json({ success: true, message: 'Product deleted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to delete product', error: err });
     }
 };

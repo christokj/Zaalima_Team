@@ -44,7 +44,6 @@ const asyncHandler = (
         } catch (err) {
             console.error(`[${new Date().toISOString()}] - Error in request to ${req.method} ${req.originalUrl}:`, err);
             await sendErrorResponse(err as CustomError, res);
-            res.json({ success: false, message: 'Error', err }); // just don't return it
         }
     };
 };
