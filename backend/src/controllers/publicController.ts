@@ -7,8 +7,8 @@ import { Types } from 'mongoose';
 import cloudinary from '../config/cloudinary';
 import streamifier from 'streamifier';
 import Product from '../models/Product';
-import { productSchema } from '../validations/productValidation';
-import { signUpSchema } from '../validations/signUpValidation';
+
+import cache from '../utils/cache';
 
 // Types for JWT payload
 interface JwtPayload {
@@ -18,17 +18,7 @@ interface JwtPayload {
 // Signup
 export const signUp = async (req: Request, res: Response): Promise<void> => {
     try {
-        // Zod validation
-        const parsedData = signUpSchema.safeParse(req.body);
-        if (!parsedData.success) {
-            res.status(400).json({
-                success: false,
-                message: parsedData.error.errors.map(err => err.message).join(', '),
-            });
-            return;
-        }
-
-        const { username, name, age, mobile, password } = parsedData.data;
+        const { username, name, age, mobile, password } = req.body;
 
         const existing = await User.findOne({ username }).lean();
         if (existing) {
@@ -154,31 +144,38 @@ export const uploadImage = async (
 
 export const uploadProduct = async (req: Request, res: Response): Promise<void> => {
     try {
-        const parsed = productSchema.safeParse({
-            ...req.body,
-            reviews: typeof req.body.reviews === 'string' ? JSON.parse(req.body.reviews) : req.body.reviews,
-        });
-
-        if (!parsed.success) {
-            res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: parsed.error.flatten().fieldErrors,
-            });
-            return;
-        }
-
-        const productData = parsed.data;
+        const productData = req.body;
 
         const product = new Product({
             ...productData,
         });
 
         await product.save();
-
+        cache.del('productList');
         res.status(200).json({ success: true, message: 'Product uploaded successfully' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Upload failed' });
+    }
+};
+
+export const getProducts = async (req: Request, res: Response) => {
+    const cacheKey = 'productList';
+
+    const cachedData = cache.get(cacheKey);
+
+    if (cachedData) {
+        res.json({ cached: true, data: cachedData });
+        return;
+    }
+
+    try {
+        const products = await Product.find().lean();
+
+        cache.set(cacheKey, products); // cached for 5 minutes (default TTL)
+
+        res.json({ cached: false, data: products });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 };
 
@@ -226,7 +223,7 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 
         // Delete product from MongoDB
         await Product.findByIdAndDelete(id);
-
+        cache.del('productList');
         res.status(200).json({ success: true, message: 'Product deleted successfully' });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Failed to delete product', error: err });

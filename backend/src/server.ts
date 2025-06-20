@@ -1,51 +1,27 @@
-import express, { Request, Response, NextFunction } from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
-import connectDB from './config/db';
-import apiRouter from './routes/index';
+import cluster from 'cluster';
+import os from 'os';
+import app from './app';
 import { ENV } from './config/env';
-import helmet from 'helmet';
 
-// Load environment variables
-dotenv.config();
+const PORT = ENV.PORT;
+const numCPUs = os.cpus().length;
 
-// Validate PORT exists
-if (!ENV.PORT) {
-    throw new Error('PORT is not defined in environment variables.');
+if (cluster.isPrimary) {
+    console.log(`Primary ${process.pid} is running`);
+
+    // Fork workers
+    for (let i = 0; i < numCPUs; i++) {
+        cluster.fork();
+    }
+
+    // Restart on crash
+    cluster.on('exit', (worker, code, signal) => {
+        console.log(`Worker ${worker.process.pid} died. Restarting...`);
+        cluster.fork();
+    });
+} else {
+    // Each worker runs the Express server
+    app.listen(PORT, () => {
+        console.log(`Worker ${process.pid} is listening on port ${PORT}`);
+    });
 }
-
-// Initialize app
-const app = express();
-
-const allowedOrigin = ENV.VITE_SERVER; // Vite dev server
-
-// Middlewares
-app.use(helmet());
-app.use(cors({
-    origin: allowedOrigin,
-    credentials: true, // ⬅️  For cookies/headers
-}));
-app.use(express.json());
-app.use(cookieParser());
-
-// Connect to MongoDB
-connectDB();
-
-// Basic route
-app.get("/", (req: Request, res: Response) => {
-    res.send("Hello World!");
-});
-
-// API routes
-app.use("/api", apiRouter);
-
-// 404 Handler
-app.use((req: Request, res: Response, next: NextFunction) => {
-    res.status(404).json({ message: "Endpoint does not exist" });
-});
-
-// Start server
-app.listen(ENV.PORT, () => {
-    console.log(`Server is running on port ${ENV.PORT}`);
-});
