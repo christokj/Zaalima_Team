@@ -10,6 +10,9 @@ import Product from '../models/Product';
 
 import cache from '../utils/cache';
 
+import mongoose from 'mongoose';
+mongoose.set('debug', true);
+
 // Types for JWT payload
 interface JwtPayload {
     userId: string | Types.ObjectId;
@@ -18,17 +21,24 @@ interface JwtPayload {
 // Signup
 export const signUp = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { username, name, age, mobile, password } = req.body;
-
-        const existing = await User.findOne({ username }).lean();
+        const { email, name, age, mobile, password } = req.body;
+        const existing = await User.findOne({ email }).lean();
         if (existing) {
-            res.status(400).json({ success: false, message: 'Username already exists' });
+            res.status(400).json({ success: false, message: 'Email already exists' });
             return;
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, name, age, mobile, password: hashedPassword });
-        await newUser.save();
+        const newUser = new User({ email, name, age, mobile, password: hashedPassword });
+        try {
+            const response = await newUser.save();
+            // console.log('User saved:', response);
+        } catch (err) {
+            // console.error('Save error:', err);
+            res.status(500).json({ success: false, message: 'Failed to save user' });
+            return;
+        }
+
 
         res.status(201).json({ success: true, message: 'Account created successfully' });
     } catch (err) {
@@ -38,21 +48,21 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 
 // Login
 export const login = async (req: Request, res: Response): Promise<void> => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        res.status(400).json({ success: false, message: 'Username and password are required' });
+    const { email, password } = req.body;
+    if (!email || !password) {
+        res.status(400).json({ success: false, message: 'Email and Password are required' });
         return;
     }
     try {
-        const user = await User.findOne({ username }).lean();
+        const user = await User.findOne({ email }).lean();
         if (!user) {
-            res.status(400).json({ success: false, message: 'Invalid username or password' });
+            res.status(400).json({ success: false, message: 'Invalid email or password' });
             return;
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            res.status(400).json({ success: false, message: 'Invalid username or password' });
+            res.status(400).json({ success: false, message: 'Invalid email or password' });
             return;
         }
 
@@ -65,7 +75,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.status(200).json({ success: true, accessToken, username, message: 'Login successful' });
+        res.status(200).json({ success: true, accessToken, email, message: 'Login successful' });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
