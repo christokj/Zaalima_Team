@@ -1,11 +1,15 @@
 import { createBrowserRouter } from "react-router-dom";
 import { RootLayout } from "../layouts/RootLayout";
-import HomePage from "../pages/HomePage";
 import { ErrorPage } from "../pages/ErrorPage";
 import ScrollToTop from "../components/ui/ScrollToTop";
 import LoginPage from "../pages/LoginPage";
 import SignupPage from "../pages/SignupPage";
-import ProtectedRoute from "../components/ProtectedRoute";
+import ProtectedRoute from "./protectedRoutes/ProtectedRoute";
+import HomePage from "../pages/Consumer/HomePage";
+import AboutPage from "../pages/Consumer/AboutPage";
+import ContactPage from "../pages/Consumer/ContactPage";
+import ProductPage from "../pages/Products/ProductPage";
+import ProductsPage from "../pages/Products/ProductsPage";
 
 export const router = createBrowserRouter([
     {
@@ -20,9 +24,7 @@ export const router = createBrowserRouter([
             {
                 path: "/",
                 element: (
-                    <ProtectedRoute>
-                        <HomePage />
-                    </ProtectedRoute>
+                    <HomePage />
                 ),
             },
             {
@@ -33,6 +35,23 @@ export const router = createBrowserRouter([
                 path: "signup",
                 element: <SignupPage />,
             },
+
+            // {
+            //     path: "about",
+            //     element: <AboutPage />,
+            // },
+            // {
+            //     path: "contact",
+            //     element: <ContactPage />,
+            // },
+            // {
+            //     path: "product",
+            //     element: <ProductPage />,
+            // },
+            {
+                path: "products",
+                element: <ProductsPage />,
+            }
         ],
     },
 ]);

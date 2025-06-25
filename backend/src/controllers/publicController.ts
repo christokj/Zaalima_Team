@@ -69,10 +69,13 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         const accessToken = jwt.sign({ userId: user._id }, ENV.ACCESS_TOKEN_SECRET, { expiresIn: '5m', algorithm: 'HS256' });
         const refreshToken = jwt.sign({ userId: user._id }, ENV.REFRESH_TOKEN_SECRET, { expiresIn: '1d', algorithm: 'HS256' });
 
-        res.cookie('refreshToken', refreshToken, {
+        const isProduction = process.env.NODE_ENV === "production";
+
+        res.cookie("refreshToken", refreshToken, {
+            maxAge: 24 * 60 * 60 * 1000, // 1 day
             httpOnly: true,
-            secure: true,
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            secure: isProduction, // Secure only in production
+            sameSite: isProduction ? "none" : "lax", // 'None' for production, 'Lax' for development
         });
 
         res.status(200).json({ success: true, accessToken, email, message: 'Login successful' });
