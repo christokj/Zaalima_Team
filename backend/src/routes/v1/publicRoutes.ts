@@ -17,8 +17,8 @@ router.post('/logout', asyncHandler(logout));
 router.post('/refresh', asyncHandler(refreshToken));
 router.post('/uploadImage', authenticate, upload.single('image'), asyncHandler(uploadImage));
 router.post('/uploadProduct', authenticate, validate(productSchema), asyncHandler(uploadProduct));
-router.get('/getProducts', authenticate, asyncHandler(getProducts));
-router.delete('/product/:id', authenticate, deleteProduct);
-router.delete('/deleteImage', authenticate, deleteImage);
+router.get('/getProducts', asyncHandler(getProducts));
+router.delete('/product/:id', asyncHandler(deleteProduct));
+router.delete('/deleteImage', authenticate, asyncHandler(deleteImage));
 
 export default router;
