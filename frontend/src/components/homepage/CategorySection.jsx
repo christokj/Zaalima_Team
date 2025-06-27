@@ -4,6 +4,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import axios from "axios";
 import { styles } from "../../styles";
+import api from "../../config/axiosInstance";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -36,11 +37,12 @@ const CategoryCard = ({ index, name, icon }) => {
 
     return (
         <Tilt className="xs:w-[250px] w-full">
-            <div ref={cardRef} className="w-full  p-[1px] rounded-[20px] shadow-card " style={{
-                background: 'radial-gradient(circle, rgba(0,0,0,0.6), rgba(255,255,255,0.1))',
-                backdropFilter: 'blur(4px)',
-                WebkitBackdropFilter: 'blur(8px)',
-            }}>
+            <div ref={cardRef} className="w-full p-[1px] rounded-[20px] shadow-card"
+                style={{
+                    background: 'radial-gradient(circle, rgba(0,0,0,0.6), rgba(255,255,255,0.1))',
+                    backdropFilter: 'blur(4px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                }}>
                 <div className="bg-tertiary rounded-2xl py-5 px-12 min-h-[280px] flex justify-evenly items-center flex-col">
                     <img src={icon} alt={name} className="object-contain rounded-2xl mx-auto w-52 h-40 hover:scale-105 transition duration-300 hover:shadow-2xl hover:opacity-90" />
                     <h3 className="text-white text-[20px] font-bold text-center">{name}</h3>
@@ -51,36 +53,22 @@ const CategoryCard = ({ index, name, icon }) => {
 };
 
 const CategorySection = () => {
-    const [categories, setCategories] = useState([
-        {
-            "_id": "1",
-            "name": "Fashion",
-            "icon": "https://res.cloudinary.com/dfm6raue1/image/upload/v1724138677/workplace-business-modern-male-accessories-laptop-white_155003-1722_e9prgu.jpg"
-        },
-        {
-            "_id": "2",
-            "name": "Electronics",
-            "icon": "https://res.cloudinary.com/dfm6raue1/image/upload/v1724138677/workplace-business-modern-male-accessories-laptop-white_155003-1722_e9prgu.jpg"
-        },
-        {
-            "_id": "3",
-            "name": "Home & Kitchen",
-            "icon": "https://res.cloudinary.com/dfm6raue1/image/upload/v1724138677/workplace-business-modern-male-accessories-laptop-white_155003-1722_e9prgu.jpg"
-        },
-        {
-            "_id": "4",
-            "name": "Books",
-            "icon": "https://res.cloudinary.com/dfm6raue1/image/upload/v1724138677/workplace-business-modern-male-accessories-laptop-white_155003-1722_e9prgu.jpg"
-        }
-    ]
-    );
+    const [categories, setCategories] = useState([]);
     const headingRef = useRef(null);
     const paragraphRef = useRef(null);
 
     useEffect(() => {
-        axios.get("http://localhost:3000/api/categories") // change if needed
-            .then(res => setCategories(res.data))
-            .catch(err => console.error("Failed to load categories", err));
+        const fetchCategories = async () => {
+            try {
+                const res = await api.get("public/categories");
+                setCategories(res.data || []);
+            } catch (err) {
+                console.error("Failed to load categories", err);
+                setCategories([]); // Fallback to empty array on error
+            }
+        };
+
+        fetchCategories();
     }, []);
 
     useGsap(headingRef, {
@@ -100,7 +88,7 @@ const CategorySection = () => {
                 <h2 className="text-3xl font-bold text-white">Explore Our Categories</h2>
             </div>
 
-            <p ref={paragraphRef} className={`${styles.heroSubText} mt-2 text-white-100 mx-36 text-center`}   >
+            <p ref={paragraphRef} className={`${styles.heroSubText} mt-2 text-white-100 mx-36 text-center`}>
                 Dive into our top categories curated for you — from fashion to tech, find everything you love.
             </p>
 

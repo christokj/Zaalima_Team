@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { useSelector } from 'react-redux';
 import api from '../../config/axiosInstance';
-import { StarsCanvas } from '../../components/canvas';
-import { Hero, Navbar } from '../../components';
+import { Hero } from '../../components';
 import CategorySection from '../../components/homepage/CategorySection';
 import OurFeatures from '../../components/ui/OurFeatures';
+const StarsCanvas = lazy(() => import("../../components/canvas/Stars"));
 
 function HomePage() {
     const [data, setData] = React.useState(null);
@@ -33,9 +33,12 @@ function HomePage() {
                 <div className=" w-full h-screen " >
                     <Hero />
                 </div>
-                <CategorySection />
+                {/* <CategorySection /> */}
                 <OurFeatures />
-                <StarsCanvas />
+                <Suspense fallback={<h1></h1>}>
+                    <StarsCanvas />
+                </Suspense>
+
             </div>
         </div >
     );

@@ -23,18 +23,36 @@ function LoginPage() {
         e.preventDefault();
         setLoading(true);
         try {
-            const res = await api.post('/public/login', { ...formData, role });
+            if (role === 'admin') {
+                const res = await api.post('/admin/login', { ...formData, role });
 
-            localStorage.setItem('accessToken', res.data.accessToken);
+                localStorage.setItem('accessToken', res.data.accessToken);
 
-            dispatch(
-                loginUser({
-                    user: { email: res.data.email, role },
-                })
-            );
+                dispatch(
+                    loginUser({
+                        user: { email: res.data.email, role },
+                    })
+                );
+
+                navigate('/admin');
+            }
+            if (role === 'consumer') {
+                const res = await api.post('/public/login', { ...formData, role });
+
+                localStorage.setItem('accessToken', res.data.accessToken);
+
+                dispatch(
+                    loginUser({
+                        user: { email: res.data.email, role },
+                    })
+                );
+
+                navigate('/');
+            }
+
+
 
             toast.success('Login successful');
-            navigate('/');
         } catch (err) {
             toast.error(err.response?.data?.message || 'Login failed');
         } finally {
@@ -101,7 +119,7 @@ function LoginPage() {
 
                     <button
                         type="submit"
-                        className={`w-full flex items-center justify-center gap-2 ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
+                        className={`w-full cursor-pointer flex items-center justify-center gap-2 ${loading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
                             } text-white py-3 rounded-lg font-semibold transition-all duration-300`}
                         disabled={loading}
                     >
@@ -131,7 +149,7 @@ function LoginPage() {
                     </button>
                 </form>
 
-                <p className="mt-6 text-center text-gray-300 text-sm">
+                <p className={`mt-6 text-center text-gray-300 text-sm ${role === 'admin' ? 'hidden' : ''}`}>
                     Don’t have an account?{' '}
                     <span
                         onClick={() => navigate('/signup')}

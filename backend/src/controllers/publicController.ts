@@ -7,10 +7,14 @@ import { Types } from 'mongoose';
 import cloudinary from '../config/cloudinary';
 import streamifier from 'streamifier';
 import Product from '../models/Product';
+import Stripe from 'stripe';
 
 import cache from '../utils/cache';
 
+import { AuthenticatedRequest } from '../middleware/auth';
+
 import mongoose from 'mongoose';
+import Cart from '../models/Cart';
 mongoose.set('debug', true);
 
 // Types for JWT payload
@@ -112,85 +116,22 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
 
 
-// Extend Request type
-interface MulterRequest extends Request {
-    file: Express.Multer.File;
-}
-
-export const uploadImage = async (
-    req: Request,
-    res: Response
-): Promise<void> => {
-    const multerReq = req as MulterRequest;
-
-    if (!multerReq.file) {
-        res.status(400).json({ success: false, message: 'No file uploaded' });
-        return;
-    }
-
-    const buffer = multerReq.file.buffer;
-
-    const streamUpload = () => {
-        return new Promise<any>((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream(
-                { folder: 'zaalima' },
-                (error, result) => {
-                    if (result) resolve(result);
-                    else reject(error);
-                }
-            );
-            streamifier.createReadStream(buffer).pipe(stream);
-        });
-    };
-
-    try {
-        const result = await streamUpload();
-        res.status(200).json({ success: true, imageUrl: result.secure_url });
-    } catch (error: any) {
-        res.status(500).json({
-            success: false,
-            message: 'Upload failed',
-            error: error?.message || 'Unknown error',
-        });
-    }
-};
-
-export const uploadProduct = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const productData = req.body;
-
-        const product = new Product({
-            ...productData,
-        });
-
-        await product.save();
-        cache.del('productList');
-        res.status(200).json({ success: true, message: 'Product uploaded successfully' });
-    } catch (err) {
-        res.status(500).json({ success: false, error: 'Upload failed' });
-    }
-};
 
 export const getProducts = async (req: Request, res: Response) => {
-    const cacheKey = 'productList';
-
-    const cachedData = cache.get(cacheKey);
-
-    if (cachedData) {
-        res.json({ cached: true, data: cachedData });
-        return;
-    }
 
     try {
-        const products = await Product.find().lean();
+        const skip = parseInt(req.query.skip as string) || 0;
+        const limit = parseInt(req.query.limit as string) || 20;
 
-        cache.set(cacheKey, products); // cached for 5 minutes (default TTL)
+        const products = await Product.find().skip(skip).limit(limit).lean();
+        const total = await Product.countDocuments();
 
-        res.json({ cached: false, data: products });
+        res.json({ success: true, data: products, total });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
 
 function extractPublicId(secureUrl: string): string {
     const parts = secureUrl.split('/');
@@ -217,28 +158,137 @@ export const deleteImage = async (req: Request, res: Response): Promise<void> =>
     }
 };
 
-export const deleteProduct = async (req: Request, res: Response): Promise<void> => {
-    const { id } = req.params;
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+    apiVersion: "2025-05-28.basil",
+});
 
+interface CartItem {
+    productId: string;
+    quantity: number;
+}
+
+export const createCheckoutSession = async (req: Request, res: Response) => {
     try {
-        const product = await Product.findById(id).select('photoUrl').lean();;
+        const { cartItems }: { cartItems: CartItem[] } = req.body;
 
-        if (!product) {
-            res.status(404).json({ success: false, message: 'Product not found' });
-            return;
+        if (!cartItems || !Array.isArray(cartItems)) {
+            res.status(400).json({ message: "Invalid cart items" });
+            return
         }
 
-        // Delete image from Cloudinary
-        if (product.photoUrl) {
-            const publicId = extractPublicId(product.photoUrl);
-            await cloudinary.uploader.destroy(publicId);
+        const lineItems = await Promise.all(
+            cartItems.map(async ({ productId, quantity }) => {
+                const product = await Product.findById(productId);
+
+                if (!product) {
+                    throw new Error(`Product not found with ID: ${productId}`);
+                }
+
+                return {
+                    price_data: {
+                        currency: "inr",
+                        product_data: {
+                            name: product.title,
+                            images: [product.photoUrl],
+                        },
+                        unit_amount: product.price * 100,
+                    },
+                    quantity,
+                };
+            })
+        );
+
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ["card"],
+            line_items: lineItems,
+            mode: "payment",
+            success_url: `${process.env.VITE_SERVER}/success`,
+            cancel_url: `${process.env.VITE_SERVER}/cancel`,
+        });
+
+        res.status(200).json({ sessionId: session.id });
+        return
+    } catch (err: any) {
+        console.error("Stripe error:", err);
+        res.status(500).json({ message: "Payment error", error: err.message });
+        return
+    }
+};
+
+
+
+export const addToCart = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { productId, quantity } = req.body;
+
+        if (!req.user || !req.user.userId) {
+            res.status(401).json({ success: false, message: "Unauthorized" });
+            return
         }
 
-        // Delete product from MongoDB
-        await Product.findByIdAndDelete(id);
-        cache.del('productList');
-        res.status(200).json({ success: true, message: 'Product deleted successfully' });
+        const userId = req.user.userId;
+
+        const cartItem = new Cart({ userId, productId, quantity });
+        await cartItem.save();
+
+        res.status(200).json({ success: true, message: "Item added to cart" });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Failed to delete product', error: err });
+        console.error("Cart error:", err);
+        res.status(500).json({ success: false, message: "Failed to add to cart", error: err });
+    }
+};
+
+export const getCart = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { userId } = req.user as { userId: string };
+
+        const cartItems = await Cart.find({ userId }).populate('productId')
+            .populate("productId") // 🔥 important
+            .sort({ createdAt: -1 });
+
+        res.status(200).json({ cart: cartItems });
+    } catch (err) {
+        console.error("Cart fetch error:", err);
+        res.status(500).json({ success: false, message: "Failed to load cart" });
+    }
+};
+export const deleteCartItem = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { userId } = req.user as { userId: string };
+        const { itemId } = req.params;
+
+        await Cart.findOneAndDelete({ _id: itemId, userId });
+
+        res.status(200).json({ success: true, message: "Item removed from cart" });
+    } catch (err) {
+        console.error("Cart delete error:", err);
+        res.status(500).json({ success: false, message: "Failed to remove item from cart" });
+    }
+};
+
+export const getCategories = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const categories = await Product.distinct('category');
+        res.status(200).json({ success: true, categories });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to fetch categories', error: err });
+    }
+}
+
+export const getCartCount = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user?.userId;
+
+        if (!userId) {
+            res.status(401).json({ message: "Unauthorized" });
+            return
+        }
+
+        const count = await Cart.countDocuments({ userId });
+
+        res.status(200).json({ success: true, count });
+    } catch (error) {
+        res.status(500).json({ success: false, message: "Failed to fetch cart count", error });
+        return
     }
 };
