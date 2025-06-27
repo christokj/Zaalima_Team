@@ -10,6 +10,9 @@ import AboutPage from "../pages/Consumer/AboutPage";
 import ContactPage from "../pages/Consumer/ContactPage";
 import ProductPage from "../pages/Products/ProductPage";
 import ProductsPage from "../pages/Products/ProductsPage";
+import SuccessPage from "../pages/Payment/SuccessPage";
+import CancelPage from "../pages/Payment/CancelPage";
+import CartPage from "../pages/cart/CartPage";
 
 export const router = createBrowserRouter([
     {
@@ -44,14 +47,45 @@ export const router = createBrowserRouter([
             //     path: "contact",
             //     element: <ContactPage />,
             // },
-            // {
-            //     path: "product",
-            //     element: <ProductPage />,
-            // },
+            {
+                path: "product/:id",
+                element: <ProductPage />,
+            },
             {
                 path: "products",
                 element: <ProductsPage />,
+            },
+            {
+                path: "success",
+                element: <SuccessPage />
+            },
+            {
+                path: "cancel",
+                element: <CancelPage />
+            },
+            {
+                path: "cart",
+                element: (
+                    <ProtectedRoute>
+                        <CartPage />
+                    </ProtectedRoute>
+                ),
             }
         ],
     },
+    {
+        path: "admin",
+        element: (
+            <ProtectedRoute >
+                {/* <AdminLayout /> */} <div>admin home page</div>
+            </ProtectedRoute>
+        ),
+        children: [
+            // {
+            //     path: "",
+            //     element: <AdminHomePage />
+            // },
+
+        ]
+    }
 ]);

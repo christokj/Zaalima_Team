@@ -6,29 +6,39 @@ import api from "../config/axiosInstance";
 import { toast } from "sonner";
 import { styles } from "../styles";
 import { menu, close } from "../assets";
-
+import { FaShoppingCart } from "react-icons/fa";
 const Navbar = () => {
-  const [active, setActive] = useState("");
   const [toggle, setToggle] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  const fetchCartCount = async () => {
+    try {
+      const res = await api.get("/public/cart", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+        },
+      });
+      setCartCount(res.data.cart?.length || 0);
+    } catch (error) {
+      console.error("Failed to fetch cart", error);
+    }
+  };
+
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 100);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    if (isAuthenticated) {
+      fetchCartCount();
+    }
+  }, [isAuthenticated]);
 
   const handleLogout = async () => {
     try {
+      await api.post("/public/logout", {}, { withCredentials: true });
       localStorage.removeItem("accessToken");
       dispatch(logoutUser());
-      await api.post("/public/logout", {}, { withCredentials: true });
       toast.success("Logout successful");
       navigate("/login-page");
     } catch (err) {
@@ -46,19 +56,9 @@ const Navbar = () => {
   ];
 
   return (
-    <nav
-      className={`${styles.paddingX} w-full flex items-center py-5 fixed top-0 z-20 ${scrolled ? "bg-primary" : "bg-transparent"
-        }`}
-    >
+    <nav className={`${styles.paddingX} w-full flex items-center py-5 fixed top-0 z-50 bg-transparent backdrop-blur-xs`}>
       <div className="w-full flex justify-between items-center max-w-7xl mx-auto mt-5">
-        <Link
-          to="/"
-          className="flex items-center gap-2"
-          onClick={() => {
-            setActive("");
-            window.scrollTo(0, 0);
-          }}
-        >
+        <Link to="/" className="flex items-center gap-2">
           <img
             src="https://res.cloudinary.com/dfm6raue1/image/upload/fl_preserve_transparency/v1724577774/Services_ECommerce_v2-01_xjoraa.jpg?_s=public-apps"
             alt="logo"
@@ -70,7 +70,7 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop Navigation */}
-        <ul className="list-none hidden sm:flex flex-row gap-10">
+        <ul className="list-none hidden sm:flex flex-row gap-10 items-center">
           {navLinks.map((nav) => (
             <li key={nav.title}>
               {nav.onClick ? (
@@ -92,6 +92,17 @@ const Navbar = () => {
               )}
             </li>
           ))}
+
+          <li className="relative">
+            <Link to="/cart" className="text-white text-xl relative">
+              <FaShoppingCart />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-3 bg-red-500 text-xs text-white rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+          </li>
         </ul>
 
         {/* Mobile Navigation */}
@@ -103,11 +114,8 @@ const Navbar = () => {
             onClick={() => setToggle(!toggle)}
           />
 
-          <div
-            className={`${!toggle ? "hidden" : "flex"
-              } p-6 black-gradient absolute top-20 right-0 mx-4 my-2 min-w-[140px] z-10 rounded-xl`}
-          >
-            <ul className="list-none flex justify-end items-start flex-1 flex-col gap-4">
+          <div className={`${!toggle ? "hidden" : "flex"} p-6 black-gradient absolute top-20 right-0 mx-4 my-2 min-w-[140px] z-10 rounded-xl`}>
+            <ul className="list-none flex flex-col gap-4">
               {navLinks.map((nav) => (
                 <li key={nav.title}>
                   {nav.onClick ? (
@@ -131,6 +139,17 @@ const Navbar = () => {
                   )}
                 </li>
               ))}
+
+              <li>
+                <Link to="/cart" onClick={() => setToggle(false)} className="text-white flex items-center gap-2">
+                  <FaShoppingCart />
+                  {cartCount > 0 && (
+                    <span className="bg-red-500 text-xs px-2 rounded-full">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
