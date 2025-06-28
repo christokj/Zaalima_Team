@@ -30,7 +30,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use(limiter);
-app.use('/api', webhookRoutes);
+// app.use('/api', webhookRoutes);
 
 connectDB();
 
@@ -42,6 +42,11 @@ app.use("/api", apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
     res.status(404).json({ message: "Endpoint does not exist" });
+});
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error("Global Error:", err.stack || err);
+    res.status(500).json({ error: 'Something went wrong' });
 });
 
 export default app;
