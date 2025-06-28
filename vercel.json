@@ -5,22 +5,22 @@
             "src": "apps/frontend/package.json",
             "use": "@vercel/static-build",
             "config": {
-                "distDir": "../public"
+                "distDir": "dist"
             }
         },
         {
-            "src": "apps/backend/src/server.js",
+            "src": "apps/backend/src/server.ts",
             "use": "@vercel/node"
         }
     ],
     "routes": [
         {
             "src": "/api/(.*)",
-            "dest": "apps/backend/src/server.js"
+            "dest": "apps/backend/src/server.ts"
         },
         {
             "src": "/(.*)",
-            "dest": "/public/index.html"
+            "dest": "apps/frontend/dist/index.html"
         }
     ]
 }
