@@ -16,7 +16,7 @@ const processQueue = (error, token = null) => {
 };
 
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api/v1',
+    baseURL: import.meta.env.VITE_BACKEND_PORT + '/api/v1',
     withCredentials: true, // send cookies with refresh request
 });
 
@@ -52,7 +52,7 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                const res = await axios.post('http://localhost:3000/api/v1/public/refresh', {}, {
+                const res = await axios.post(import.meta.env.VITE_BACKEND_PORT + '/api/v1/public/refresh', {}, {
                     withCredentials: true,
                 });
 
