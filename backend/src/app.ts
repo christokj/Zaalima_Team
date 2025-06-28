@@ -11,9 +11,9 @@ import limiter from './utils/limiter';
 
 dotenv.config();
 
-if (!ENV.PORT) {
-    throw new Error('PORT is not defined in environment variables.');
-}
+// if (!ENV.PORT) {
+//     throw new Error('PORT is not defined in environment variables.');
+// }
 
 const app = express();
 
