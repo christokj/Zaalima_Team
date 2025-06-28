@@ -15,14 +15,18 @@ if (!ENV.PORT) {
     throw new Error('PORT is not defined in environment variables.');
 }
 
+
 const app = express();
-const allowedOrigin = ENV.VITE_SERVER;
+
+app.set('trust proxy', 1);
 
 app.use(helmet());
 app.use(cors({
-    origin: allowedOrigin,
-    credentials: true,
+    origin: [ENV.VITE_SERVER],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true, // Allow credentials (cookies, etc.)
 }));
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(limiter);
