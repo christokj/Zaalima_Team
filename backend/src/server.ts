@@ -25,9 +25,10 @@ const PORT = ENV.PORT || 3000;
 //         });
 //     }
 // }
+if (process.env.NODE_ENV === 'development') {
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
-
-// export default app;
+    app.listen(PORT, () => {
+        console.log(`Server is running on port ${PORT}`);
+    });
+}
+export default app;
