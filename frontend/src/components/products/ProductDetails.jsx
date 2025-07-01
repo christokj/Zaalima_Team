@@ -3,6 +3,7 @@ import { FaStar } from "react-icons/fa";
 import { loadStripe } from "@stripe/stripe-js";
 import axios from "axios";
 import api from "../../config/axiosInstance";
+import { toast } from "sonner";
 
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_Publishable_key);
@@ -25,6 +26,7 @@ const ProductDetails = ({ product }) => {
                 alert("Failed to add to cart.");
             }
         } catch (err) {
+            toast.warning('Please login to add products to cart');
             console.error("Add to cart error:", err);
         }
     };
@@ -42,6 +44,7 @@ const ProductDetails = ({ product }) => {
 
             await stripe.redirectToCheckout({ sessionId });
         } catch (err) {
+            toast.warning('Please login to buy products');
             console.error("Stripe checkout error:", err);
         }
     };

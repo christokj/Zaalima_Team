@@ -13,6 +13,12 @@ import ProductsPage from "../pages/Products/ProductsPage";
 import SuccessPage from "../pages/Payment/SuccessPage";
 import CancelPage from "../pages/Payment/CancelPage";
 import CartPage from "../pages/cart/CartPage";
+import { AdminLayout } from "../layouts/AdminLayout";
+import AdminDashboard from "../pages/Admin/AdminDashboard";
+import { User } from "lucide-react";
+import UsersList from "../pages/Admin/UsersList";
+import ProductsList from "../pages/Admin/ProductsList";
+import AddEditProduct from "../pages/Admin/AddEditProduct";
 
 export const router = createBrowserRouter([
     {
@@ -76,16 +82,27 @@ export const router = createBrowserRouter([
     {
         path: "admin",
         element: (
-            <ProtectedRoute >
-                {/* <AdminLayout /> */} <div>admin home page</div>
-            </ProtectedRoute>
+
+            <AdminLayout />
+
         ),
         children: [
-            // {
-            //     path: "",
-            //     element: <AdminHomePage />
-            // },
-
+            {
+                path: "",
+                element: <AdminDashboard />
+            },
+            {
+                path: "products",
+                element: <ProductsList />
+            },
+            {
+                path: "addEditProduct/:id",
+                element: <AddEditProduct />
+            },
+            {
+                path: "users",
+                element: <UsersList />
+            }
         ]
     }
 ]);

@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { User } from '../models/User';
@@ -15,6 +15,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import mongoose from 'mongoose';
 import Cart from '../models/Cart';
 import Admin from '../models/AdminSchema';
+import { z } from 'zod';
 mongoose.set('debug', true);
 
 // Types for JWT payload
@@ -22,44 +23,117 @@ interface JwtPayload {
     userId: string | Types.ObjectId;
 }
 
+// const signupSchema = z.object({
+//     email: z.string().email('Invalid email format'),
+//     password: z.string()
+// });
+
+// export const signup = async (req: Request, res: Response) => {
+//     // Validate input with Zod
+//     const validationResult = signupSchema.safeParse(req.body);
+
+//     if (!validationResult.success) {
+//         res.status(400).json({
+//             success: false,
+//             errors: validationResult.error.flatten().fieldErrors
+//         });
+//         return
+//     }
+
+//     const { email, password } = validationResult.data;
+
+//     try {
+//         // Check for existing admin
+//         if (await Admin.findOne({ email })) {
+//             res.status(409).json({
+//                 success: false,
+//                 message: 'Email already in use'
+//             });
+//             return;
+//         }
+
+//         // Create and save admin (auto-hashes password via schema pre-save hook)
+//         const admin = await Admin.create({ email, password });
+
+//         res.status(201).json({
+//             success: true,
+//             message: 'Admin created successfully',
+//             email: admin.email
+//             // Omit password hash automatically
+//         });
+//         return;
+
+//     } catch (err) {
+//         console.error('Signup error:', err);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Internal server error'
+//         });
+//         return;
+//     }
+// };
 
 // Login
 export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
+
+    // Validate input
     if (!email || !password) {
-        res.status(400).json({ success: false, message: 'Email and Password are required' });
+        res.status(400).json({ success: false, message: 'Email and password are required' });
         return;
     }
-    console.log(email, password)
+
     try {
-        const user = await Admin.findOne({ email }).lean();
-        console.log(user)
-        if (!user) {
-            res.status(400).json({ success: false, message: 'Invalid email or password' });
+        // Find admin and explicitly select password
+        const admin = await Admin.findOne({ email }).select('+password');
+        if (!admin) {
+            res.status(401).json({ success: false, message: 'Invalid credentials' });
             return;
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        // Compare passwords
+        const isMatch = await admin.comparePassword(password);
         if (!isMatch) {
-            res.status(400).json({ success: false, message: 'Invalid email or password' });
+            res.status(401).json({ success: false, message: 'Invalid credentials' });
             return;
         }
 
-        const accessToken = jwt.sign({ userId: user._id }, ENV.ACCESS_TOKEN_SECRET, { expiresIn: '5m', algorithm: 'HS256' });
-        const refreshToken = jwt.sign({ userId: user._id }, ENV.REFRESH_TOKEN_SECRET, { expiresIn: '1d', algorithm: 'HS256' });
+        // Create tokens (using admin._id, not user._id)
+        const accessToken = jwt.sign(
+            { userId: admin._id },
+            process.env.ACCESS_TOKEN_SECRET!,
+            { expiresIn: '5m', algorithm: 'HS256' }
+        );
 
-        const isProduction = process.env.NODE_ENV === "production";
+        const refreshToken = jwt.sign(
+            { userId: admin._id },
+            process.env.REFRESH_TOKEN_SECRET!,
+            { expiresIn: '1d', algorithm: 'HS256' }
+        );
 
-        res.cookie("refreshToken", refreshToken, {
-            maxAge: 24 * 60 * 60 * 1000, // 1 day
+        // Set cookie
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: isProduction, // Secure only in production
-            sameSite: isProduction ? "none" : "lax", // 'None' for production, 'Lax' for development
+            secure: isProduction,
+            sameSite: isProduction ? 'none' : 'lax',
+            maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
 
-        res.status(200).json({ success: true, accessToken, email, message: 'Login successful' });
+        res.status(200).json({
+            success: true,
+            accessToken,
+            email: admin.email,
+            role: 'admin',
+            message: 'Login successful'
+        });
+
     } catch (err) {
-        res.status(500).json({ success: false, message: 'Server error' });
+        console.error('Login error:', err);
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred during login'
+        });
     }
 };
 
@@ -89,6 +163,62 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
     res.status(200).json({ success: true, message: 'Logout successful' });
 };
 
+export const getDashboardStats = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        // Get total number of users
+        const totalUsers = await User.countDocuments();
+
+        // Get total number of products
+        const totalProducts = await Product.countDocuments();
+        console.log('totalProducts:', totalProducts, 'totalUsers:', totalUsers);
+        res.status(200).json({
+            success: true,
+            data: {
+                totalUsers,
+                totalProducts,
+            }
+        });
+    }
+    catch (err) {
+        console.error('Dashboard stats error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch dashboard stats' });
+    }
+}
+
+export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const users = await User.find().select('-password').lean();
+        res.status(200).json({ success: true, data: users });
+    } catch (err) {
+        console.error('Get all users error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch users' });
+    }
+};
+
+export const toggleUserStatus = async (req: Request, res: Response) => {
+    try {
+        const userId = req.params.id;
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            res.status(404).json({ success: false, message: "User not found" });
+            return
+        }
+
+        user.active = !user.active;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: `User has been ${user.active ? "activated" : "frozen"}`,
+            active: user.active,
+        });
+    } catch (error) {
+        console.error("Toggle user error:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+};
 // Extend Request type
 interface MulterRequest extends Request {
     file: Express.Multer.File;
@@ -194,10 +324,8 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
 export const getProducts = async (req: Request, res: Response) => {
 
     try {
-        const skip = parseInt(req.query.skip as string) || 0;
-        const limit = parseInt(req.query.limit as string) || 20;
 
-        const products = await Product.find().skip(skip).limit(limit).lean();
+        const products = await Product.find().lean();
         const total = await Product.countDocuments();
 
         res.json({ success: true, data: products, total });
@@ -205,3 +333,18 @@ export const getProducts = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
+
+export const getProduct = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const product = await Product.findById(id).lean();
+        if (!product) {
+            return res.status(404).json({ success: false, message: 'Product not found' });
+        }
+        res.status(200).json({ success: true, data: product });
+    } catch (err) {
+        console.error('Get product error:', err);
+        res.status(500).json({ success: false, message: 'Failed to fetch product' });
+    }
+}

@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { User } from '../models/User';
@@ -82,7 +82,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             sameSite: isProduction ? "none" : "lax", // 'None' for production, 'Lax' for development
         });
 
-        res.status(200).json({ success: true, accessToken, email, message: 'Login successful' });
+        res.status(200).json({ success: true, accessToken, email, role: "consumer", message: 'Login successful' });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Server error' });
     }

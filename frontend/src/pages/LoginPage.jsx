@@ -9,7 +9,7 @@ import { StarsCanvas } from '../components';
 
 function LoginPage() {
     const [formData, setFormData] = useState({ email: '', password: '' });
-    const [role, setRole] = useState('consumer'); // admin or consumer
+    const [role, setRole] = useState('consumer');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
@@ -30,7 +30,8 @@ function LoginPage() {
 
                 dispatch(
                     loginUser({
-                        user: { email: res.data.email, role },
+                        email: res.data.email,
+                        role: res.data.role,
                     })
                 );
 
@@ -43,7 +44,8 @@ function LoginPage() {
 
                 dispatch(
                     loginUser({
-                        user: { email: res.data.email, role },
+                        email: res.data.email,
+                        role: res.data.role,
                     })
                 );
 
@@ -68,7 +70,7 @@ function LoginPage() {
                 {/* Role toggle */}
                 <div className="flex justify-center gap-4 mb-6">
                     <button
-                        className={`px-6 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${role === 'consumer'
+                        className={`px-6 py-2 rounded-full cursor-pointer text-sm font-semibold transition-all duration-300 ${role === 'consumer'
                             ? 'bg-blue-600 text-white'
                             : 'bg-white text-black hover:bg-gray-100'
                             }`}
@@ -78,7 +80,7 @@ function LoginPage() {
                         Consumer
                     </button>
                     <button
-                        className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300 ${role === 'admin'
+                        className={`px-4 py-2 rounded-full cursor-pointer text-sm font-semibold transition-all duration-300 ${role === 'admin'
                             ? 'bg-blue-600 text-white'
                             : 'bg-white text-black hover:bg-gray-100'
                             }`}

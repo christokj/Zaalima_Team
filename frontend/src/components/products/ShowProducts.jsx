@@ -1,4 +1,5 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 const SkeletonCard = () => (
@@ -16,6 +17,8 @@ const SkeletonCard = () => (
 const ShowProducts = ({ products = [], loading = false }) => {
     const navigate = useNavigate();
 
+    const { role } = useSelector((state) => state.auth);
+    console.log(role)
     if (loading) {
         return (
             <div className="px-4 py-10 min-h-screen">
@@ -39,14 +42,14 @@ const ShowProducts = ({ products = [], loading = false }) => {
     return (
         <div className="px-4 py-10 min-h-screen">
             <h2 className="text-white text-3xl md:text-4xl font-bold text-center mb-10 animate-fade-in">
-                Our Mesmerizing Products
+                {role !== "admin" ? 'Our Mesmerizing Products' : 'All Products'}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
                 {products.map((product, index) => (
                     <div
                         key={product._id || index}
                         onClick={() =>
-                            navigate(`/product/${product._id}`, { state: { product } })
+                            navigate(role !== "admin" ? `/product/${product._id}` : `/admin/addEditProduct/${product._id}`, { state: { product } })
                         }
                         className="bg-white/10 border border-white/10 backdrop-blur-sm rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
                     >

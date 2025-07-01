@@ -8,7 +8,7 @@ const StarsCanvas = lazy(() => import("../../components/canvas/Stars"));
 
 function HomePage() {
     const [data, setData] = React.useState(null);
-    const user = useSelector((state) => state.auth.user?.username);
+    const user = useSelector((state) => state.auth.username);
 
     // Function to fetch data from the API
     const getData = () => {
