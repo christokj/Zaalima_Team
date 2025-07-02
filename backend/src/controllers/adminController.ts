@@ -16,6 +16,7 @@ import mongoose from 'mongoose';
 import Cart from '../models/Cart';
 import Admin from '../models/AdminSchema';
 import { z } from 'zod';
+import DesignOrder from '../models/DesignOrder';
 mongoose.set('debug', true);
 
 // Types for JWT payload
@@ -340,7 +341,8 @@ export const getProduct = async (req: Request, res: Response) => {
     try {
         const product = await Product.findById(id).lean();
         if (!product) {
-            return res.status(404).json({ success: false, message: 'Product not found' });
+            res.status(404).json({ success: false, message: 'Product not found' });
+            return
         }
         res.status(200).json({ success: true, data: product });
     } catch (err) {
@@ -348,3 +350,12 @@ export const getProduct = async (req: Request, res: Response) => {
         res.status(500).json({ success: false, message: 'Failed to fetch product' });
     }
 }
+
+export const getAllDesignOrders = async (req: Request, res: Response) => {
+    try {
+        const orders = await DesignOrder.find().sort({ createdAt: -1 });
+        res.status(200).json({ success: true, data: orders });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Fetching orders failed' });
+    }
+};
