@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import multer from 'multer';
 import asyncHandler from '../../utils/asyncHandler';
-import { login, refreshToken, logout, uploadProduct, uploadImage, deleteProduct, getProducts, getCategories, getDashboardStats, getAllUsers, toggleUserStatus, getProduct } from '../../controllers/adminController';
+import { login, refreshToken, logout, uploadProduct, uploadImage, deleteProduct, getProducts, getCategories, getDashboardStats, getAllUsers, toggleUserStatus, getProduct, getAllDesignOrders } from '../../controllers/adminController';
 import authenticate from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { productSchema } from '../../validations/productValidation';
@@ -23,5 +23,6 @@ router.post('/uploadImage', authenticate, upload.single('image'), asyncHandler(u
 router.post('/uploadProduct', authenticate, validate(productSchema), asyncHandler(uploadProduct));
 router.delete('/product/:id', asyncHandler(deleteProduct));
 router.get('/categories', asyncHandler(getCategories));
+router.get('/design-orders', asyncHandler(getAllDesignOrders));
 
 export default router;

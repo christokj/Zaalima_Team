@@ -18,7 +18,7 @@ const ShowProducts = ({ products = [], loading = false }) => {
     const navigate = useNavigate();
 
     const { role } = useSelector((state) => state.auth);
-    console.log(role)
+
     if (loading) {
         return (
             <div className="px-4 py-10 min-h-screen">

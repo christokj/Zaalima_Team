@@ -11,7 +11,7 @@ const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFuncti
     const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) {
-        res.status(401).json({ success: false, message: "No token provided" });
+        res.status(401).json({ success: false, message: "Please login" });
         return;
     }
 

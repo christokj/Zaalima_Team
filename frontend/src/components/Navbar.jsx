@@ -49,7 +49,6 @@ const Navbar = () => {
   const navLinks = [
     { title: "Home", path: "/" },
     { title: "Products", path: "/products" },
-    { title: "About", path: "/about" },
     isAuthenticated
       ? { title: "Logout", path: "#", onClick: handleLogout }
       : { title: "Login", path: "/login-page" },
