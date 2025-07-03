@@ -79,7 +79,10 @@ export const signUpSchema = z.object({
         .refine((mobile) => !/^(.)\1{9}$/.test(mobile), {
             message: 'Mobile number cannot have all identical digits',
         }),
-
+    address: z
+        .string()
+        .min(10, 'Address must be at least 10 characters long')
+        .max(200, 'Address must not exceed 200 characters'),
     password: z
         .string()
         .min(8, 'Password must be at least 8 characters long')

@@ -7,6 +7,7 @@ import apiRouter from './routes/index';
 import { ENV } from './config/env';
 import helmet from 'helmet';
 import limiter from './utils/limiter';
+import { handleStripeWebhook } from './controllers/publicController';
 // import webhookRoutes from './routes/v1/webhookRoutes';
 
 dotenv.config();
@@ -29,6 +30,9 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 }));
+
+// webhook handler for Stripe events
+app.post('/api/v1/stripe/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 
 // Core middleware
 app.use(express.json());

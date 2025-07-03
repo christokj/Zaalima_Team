@@ -27,7 +27,7 @@ interface JwtPayload {
 // Signup
 export const signUp = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, name, age, mobile, password } = req.body;
+        const { email, name, age, mobile, address, password } = req.body;
         const existing = await User.findOne({ email }).lean();
         if (existing) {
             res.status(400).json({ success: false, message: 'Email already exists' });
@@ -35,12 +35,12 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, name, age, mobile, password: hashedPassword });
+        const newUser = new User({ email, name, age, mobile, address, password: hashedPassword });
         try {
             const response = await newUser.save();
             // console.log('User saved:', response);
         } catch (err) {
-            // console.error('Save error:', err);
+            console.error('Save error:', err);
             res.status(500).json({ success: false, message: 'Failed to save user' });
             return;
         }
@@ -55,14 +55,23 @@ export const signUp = async (req: Request, res: Response): Promise<void> => {
 // Login
 export const login = async (req: Request, res: Response): Promise<void> => {
     const { email, password } = req.body;
+
     if (!email || !password) {
         res.status(400).json({ success: false, message: 'Email and Password are required' });
         return;
     }
+
     try {
-        const user = await User.findOne({ email }).lean();
+        const user = await User.findOne({ email });
+
         if (!user) {
             res.status(400).json({ success: false, message: 'Invalid email or password' });
+            return;
+        }
+
+        // ❌ Block frozen users
+        if (!user.active) {
+            res.status(403).json({ success: false, message: 'Account is frozen. Please contact support.' });
             return;
         }
 
@@ -72,20 +81,35 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        const accessToken = jwt.sign({ userId: user._id }, ENV.ACCESS_TOKEN_SECRET, { expiresIn: '5m', algorithm: 'HS256' });
-        const refreshToken = jwt.sign({ userId: user._id }, ENV.REFRESH_TOKEN_SECRET, { expiresIn: '1d', algorithm: 'HS256' });
+        const accessToken = jwt.sign({ userId: user._id }, ENV.ACCESS_TOKEN_SECRET, {
+            expiresIn: '5m',
+            algorithm: 'HS256',
+        });
+
+        const refreshToken = jwt.sign({ userId: user._id }, ENV.REFRESH_TOKEN_SECRET, {
+            expiresIn: '1d',
+            algorithm: 'HS256',
+        });
 
         const isProduction = process.env.NODE_ENV === "production";
 
         res.cookie("refreshToken", refreshToken, {
-            maxAge: 24 * 60 * 60 * 1000, // 1 day
+            maxAge: 24 * 60 * 60 * 1000,
             httpOnly: true,
-            secure: isProduction, // Secure only in production
-            sameSite: isProduction ? "none" : "lax", // 'None' for production, 'Lax' for development
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
         });
 
-        res.status(200).json({ success: true, accessToken, email, role: "consumer", message: 'Login successful' });
+        res.status(200).json({
+            success: true,
+            accessToken,
+            email: user.email,
+            role: "consumer",
+            message: 'Login successful'
+        });
+
     } catch (err) {
+        console.error("Login error:", err);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 };
@@ -327,28 +351,53 @@ export const uploadDesignImage = async (req: Request, res: Response) => {
     }
 };
 
-export const createDesignOrder = async (req: Request, res: Response) => {
+export const createDesignOrder = async (req: AuthenticatedRequest, res: Response) => {
+    const { sessionId } = req.body;
+
+    if (!req.user || !req.user.userId) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return
+    }
+
+    const userId = req.user?.userId;
+
+
+    console.log(userId, "userId in createDesignOrder");
+    if (!sessionId) {
+        res.status(400).json({ success: false, message: 'Session ID is required' });
+        return
+    }
+
     try {
-        const { customerName, apparel, size, designImageUrl, position, scale } = req.body;
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+        const metadata = session.metadata;
+        console.log(metadata, "metadata in createDesignOrder");
+        if (!metadata) {
+            res.status(400).json({ success: false, message: 'Missing metadata' });
+            return
+        }
 
         const newOrder = new DesignOrder({
-            customerName,
-            apparel,
-            size,
-            designImageUrl,
-            position,
-            scale,
+            userId: metadata.userId,
+            apparel: metadata.apparel,
+            size: metadata.size,
+            designImageUrl: metadata.designImageUrl,
+            position: JSON.parse(metadata.position),
+            scale: parseFloat(metadata.scale),
         });
 
         await newOrder.save();
-
-        res.status(201).json({ success: true, data: newOrder });
-    } catch (err) {
-        res.status(500).json({ success: false, message: 'Order creation failed' });
+        res.status(200).json({ success: true, message: 'Custom design order saved' });
+        return
+    } catch (err: any) {
+        console.error('❌ Error saving custom order from session:', err.message);
+        res.status(500).json({ success: false, message: 'Failed to save order', error: err.message });
     }
 };
 
-export const createCustomDesignCheckoutSession = async (req: Request, res: Response) => {
+
+export const createCustomDesignCheckoutSession = async (req: AuthenticatedRequest, res: Response) => {
     const {
         apparel,
         designImageUrl,
@@ -357,8 +406,17 @@ export const createCustomDesignCheckoutSession = async (req: Request, res: Respo
         size,
         position,
         scale,
+        price,
     } = req.body;
 
+    if (!req.user || !req.user.userId) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return
+    }
+
+    const userId = req.user.userId;
+
+    console.log(userId, "userId in createCustomDesignCheckoutSession");
     try {
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ["card"],
@@ -370,13 +428,14 @@ export const createCustomDesignCheckoutSession = async (req: Request, res: Respo
                             name: `${apparel} Custom Design`,
                             images: [designImageUrl],
                         },
-                        unit_amount: 2999, // $29.99 in cents
+                        unit_amount: price || 79900,
                     },
                     quantity: 1,
                 },
             ],
             mode: "payment",
             metadata: {
+                userId: String(userId),
                 apparel,
                 designImageUrl,
                 previewUrl,
@@ -386,54 +445,113 @@ export const createCustomDesignCheckoutSession = async (req: Request, res: Respo
                 scale: String(scale),
                 type: "custom-design",
             },
-            success_url: `${process.env.VITE_SERVER}/success`,
+            success_url: `${process.env.VITE_SERVER}/success?session_id={CHECKOUT_SESSION_ID}`,   // ✅ Must define CLIENT_URL in .env
             cancel_url: `${process.env.VITE_SERVER}/cancel`,
         });
 
-        res.status(200).json({ sessionId: session.id });
+        res.status(200).json({ success: true, sessionId: session.id });
     } catch (err: any) {
         console.error("Stripe error:", err);
-        res.status(500).json({ message: "Custom design checkout failed", error: err.message });
+        res.status(500).json({
+            success: false,
+            message: "Custom design checkout failed",
+            error: err.message,
+        });
     }
 };
 
-export const stripeWebhook = async (req: Request, res: Response) => {
-    const sig = req.headers["stripe-signature"];
+
+export const handleStripeWebhook = async (req: Request, res: Response): Promise<void> => {
+    const sig = req.headers['stripe-signature'] as string;
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
     let event: Stripe.Event;
 
     try {
-        event = stripe.webhooks.constructEvent(
-            req.body,
-            sig!,
-            process.env.STRIPE_WEBHOOK_SECRET!
-        );
+        event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     } catch (err: any) {
-        console.error("Webhook verification failed:", err.message);
+        console.error('❌ Stripe webhook error:', err.message);
         res.status(400).send(`Webhook Error: ${err.message}`);
-        return
+        return;
     }
 
-    if (event.type === "checkout.session.completed") {
+    // ✅ Handle successful payment event
+    if (event.type === 'checkout.session.completed') {
         const session = event.data.object as Stripe.Checkout.Session;
 
-        if (session.metadata?.type === "custom-design") {
+        if (session.metadata) {
+            const {
+                userId,
+                apparel,
+                size,
+                designImageUrl,
+                position,
+                scale,
+            } = session.metadata;
+
             try {
-                await DesignOrder.create({
-                    apparel: session.metadata.apparel,
-                    designImageUrl: session.metadata.designImageUrl,
-                    previewUrl: session.metadata.previewUrl,
-                    customerName: session.metadata.customerName,
-                    size: session.metadata.size,
-                    position: JSON.parse(session.metadata.position),
-                    scale: Number(session.metadata.scale),
+                const newOrder = new DesignOrder({
+                    userId,
+                    apparel,
+                    size,
+                    designImageUrl,
+                    position: JSON.parse(position),
+                    scale: parseFloat(scale),
                 });
 
-                console.log("✅ Custom design order saved");
-            } catch (err) {
-                console.error("❌ Failed to save custom design order:", err);
+                await newOrder.save();
+                console.log('✅ Custom Design Order saved:', newOrder._id);
+            } catch (error) {
+                console.error('❌ Error saving custom design order:', error);
             }
         }
     }
 
-    res.status(200).json({ received: true });
+    res.status(200).send({ received: true });
 };
+export const getMyDesignOrders = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { userId } = req.user as { userId: string };
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+        const orders = await DesignOrder.find({ userId }).sort({ createdAt: -1 });
+        res.status(200).json({ success: true, data: orders });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Could not fetch orders' });
+    }
+};
+
+export const getProfile = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { userId } = req.user as { userId: string };
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        } const user = await User.findById(userId).select('-password').lean();
+
+        if (!user) {
+            res.status(404).json({ success: false, message: 'User not found' });
+            return;
+        }
+
+        res.status(200).json({ success: true, data: user });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+};
+export const getDesignOrders = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { userId } = req.user as { userId: string };
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        } const orders = await DesignOrder.find({ userId }).sort({ createdAt: -1 });
+
+        res.status(200).json({ success: true, data: orders });
+    } catch (err) {
+        console.error("Error fetching design orders:", err);
+        res.status(500).json({ success: false, message: 'Failed to fetch design orders' });
+    }
+}

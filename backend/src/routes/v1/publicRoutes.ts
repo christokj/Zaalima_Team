@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
 import multer from 'multer';
 import asyncHandler from '../../utils/asyncHandler';
-import { signUp, login, refreshToken, logout, deleteImage, getProducts, createCheckoutSession, addToCart, getCart, deleteCartItem, getCategories, getCartCount, uploadDesignImage, createDesignOrder, createCustomDesignCheckoutSession, stripeWebhook } from '../../controllers/publicController';
+import { signUp, login, refreshToken, logout, deleteImage, getProducts, createCheckoutSession, addToCart, getCart, deleteCartItem, getCategories, getCartCount, uploadDesignImage, createDesignOrder, createCustomDesignCheckoutSession, getProfile, getDesignOrders, handleStripeWebhook } from '../../controllers/publicController';
 import authenticate from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { signUpSchema } from '../../validations/signUpValidation';
@@ -23,8 +23,11 @@ router.delete('/cart/:productId', authenticate, asyncHandler(deleteCartItem));
 // router.get('/categories', asyncHandler(getCategories));
 router.get('/cart', authenticate, asyncHandler(getCartCount));
 router.post('/upload-design', upload.single('image'), asyncHandler(uploadDesignImage));
-router.post('/design-orders', authenticate, asyncHandler(createDesignOrder));
+router.post('/save-custom-order', authenticate, asyncHandler(createDesignOrder));
 router.post("/custom-design-checkout-session", authenticate, asyncHandler(createCustomDesignCheckoutSession));
-router.post("/webhook", express.raw({ type: "application/json" }), stripeWebhook);
+// router.post("/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
+router.get('/profile', authenticate, asyncHandler(getProfile));
+router.get('/my-design-orders', authenticate, asyncHandler(getDesignOrders));
+
 
 export default router;

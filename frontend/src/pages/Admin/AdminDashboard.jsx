@@ -37,6 +37,12 @@ function AdminDashboard() {
                     Manage Products
                 </button>
                 <button
+                    onClick={() => navigate('/admin/custom-clothes')}
+                    className="px-6 py-2 bg-blue-500 rounded cursor-pointer hover:bg-blue-700"
+                >
+                    Manage Custom Clothes Orders
+                </button>
+                <button
                     onClick={() => navigate('/admin/users')}
                     className="px-6 py-2 bg-green-500 rounded cursor-pointer hover:bg-green-700"
                 >

@@ -1,106 +1,56 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { axiosInstance } from '../../config/axiosInstance';
-import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { logout } from '../../redux/features/authSlice';
-import { MyContext } from '../../components/Context/Context';
+import React, { useEffect, useState } from 'react';
+import api from '../../config/axiosInstance';
+import { toast } from 'sonner';
+import UserOrders from '../../components/UserOrders.jsx';
 
 function ProfilePage() {
+  const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('profile');
 
-  const [userData, setUserData] = useState(null);
-
-  const { value, setValue } = useContext(MyContext);
-
-  const dispatch = useDispatch();
-
-  const navigate = useNavigate();
-  const handleClick = async () => {
+  const fetchUserDetails = async () => {
     try {
-      const response = await axiosInstance({
-        url: "/user/logout",
-        method: "GET",
-      });
-      localStorage.removeItem('token');
-      dispatch(logout());
-      toast.success("Logout successful");
-      navigate('/', { replace: true })
-    } catch (error) {
-      toast.error("Logout failed");
+      const res = await api.get('/public/profile');
+      setUser(res.data.data);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      toast.error('Failed to load user profile');
     }
-  }
-
-  const handleUpdate = async () => {
-
-    navigate('/user/update-user', { state: { userData } })
-
-  }
-
-  const fetchUserData = async () => {
-    try {
-      const response = await axiosInstance({
-        url: "/user/fetch-user-data",
-        method: "GET",
-      });
-
-      if (!response) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      setUserData(response?.data?.data)
-
-    } catch (error) {
-      console.error('Error:', error);
-      toast.error("Failed to fectch user data");
-    }
-  }
+  };
 
   useEffect(() => {
-    fetchUserData();
+    fetchUserDetails();
   }, []);
 
-
   return (
-    <div className={`min-h-screen mt-10 ${value && "bg-black"}bg-gray-50 flex items-center justify-center`}>
-      <div className={`w-full max-w-3xl my-10 ${value ? "bg-black" : "bg-white"}  shadow-lg rounded-3xl overflow-hidden`}>
-        <div className="p-8">
-          <div className="flex items-center">
-            <div className="ml-4">
-              <h2 className="text-2xl font-bold text-dark-grey-500">{userData?.fullname}</h2>
-              <p className="text-dark-grey-500">{userData?.email}</p>
-            </div>
-          </div>
+    <div className="min-h-screen text-white p-10">
+      <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-dark-grey-500">Profile Details</h3>
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-dark-grey-500">Full Name:</span>
-                <span className="text-dark-grey-500">{userData?.fullname}</span>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-dark-grey-500">Email:</span>
-                <span className="text-dark-grey-500">{userData?.email}</span>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-dark-grey-500">Phone:</span>
-                <span className="text-dark-grey-500">{userData?.mobile}</span>
-              </div>
-              <div className="flex items-center justify-between mt-2">
-                <span className="text-dark-grey-500">Address:</span>
-                <span className="text-dark-grey-500">Country : {userData?.address?.country}, State : {userData?.address?.state}, City : {userData?.address?.city}, Zip code : {userData?.address?.zipCode} </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-dark-grey-500">Settings</h3>
-            <div className="mt-4 space-y-4">
-              <button onClick={handleUpdate} className="btn text-black bg-main w-full">Edit Profile</button>
-              <button onClick={handleClick} className="btn btn-error w-full">Log Out</button>
-            </div>
-          </div>
-        </div>
+      <div className="flex gap-4 mb-6">
+        <button
+          onClick={() => setActiveTab('profile')}
+          className={`px-4 py-2 cursor-pointer rounded ${activeTab === 'profile' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          My Details
+        </button>
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`px-4 py-2 cursor-pointer rounded ${activeTab === 'orders' ? 'bg-blue-600' : 'bg-gray-700'}`}
+        >
+          My Orders
+        </button>
       </div>
+
+      {activeTab === 'profile' && user && (
+        <div className="bg-white/10 p-6 rounded shadow-lg max-w-md space-y-3">
+          <p><strong>Name:</strong> {user.name}</p>
+          <p><strong>Email:</strong> {user.email}</p>
+          <p><strong>Mobile:</strong> {user.mobile}</p>
+          <p><strong>Age:</strong> {user.age}</p>
+          <p><strong>Address:</strong> {user.address}</p>
+        </div>
+      )}
+
+      {activeTab === 'orders' && <UserOrders />}
     </div>
   );
 }

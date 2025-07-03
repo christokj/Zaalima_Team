@@ -5,6 +5,7 @@ declare global {
         interface Request {
             file?: Multer.File;
             files?: Multer.File[];
+
         }
     }
 }

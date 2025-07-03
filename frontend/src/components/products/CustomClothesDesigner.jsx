@@ -15,10 +15,10 @@ const apparelPrices = {
 const CustomClothesDesigner = () => {
     const [selectedApparel, setSelectedApparel] = useState('T-Shirt');
     const [previewUrl, setPreviewUrl] = useState('');
-    const [customerName, setCustomerName] = useState('');
     const [size, setSize] = useState('M');
     const [position, setPosition] = useState({ x: 80, y: 80 });
     const [scale, setScale] = useState(1);
+    const [price, setPrice] = useState(apparelPrices[selectedApparel]);
     const [uploading, setUploading] = useState(false);
     const dragging = useRef(false);
     const designImageRef = useRef('');
@@ -82,19 +82,25 @@ const CustomClothesDesigner = () => {
     };
 
     const handleOrderAndPayment = async () => {
-        if (!customerName || !designImageRef.current) {
-            toast.error('Please enter name and upload design.');
+        if (!designImageRef.current) {
+            toast.error('Please upload design.');
             return;
         }
-
+        if (!previewUrl) {
+            toast.error('Please upload design image.');
+            return;
+        }
         try {
             const stripe = await stripePromise;
+            if (!stripe) {
+                toast.error('Stripe failed to load');
+                return;
+            }
 
             const payload = {
                 apparel: selectedApparel,
                 designImageUrl: designImageRef.current,
                 previewUrl,
-                customerName,
                 size,
                 position,
                 scale,
@@ -102,19 +108,25 @@ const CustomClothesDesigner = () => {
             };
 
             const res = await api.post('/public/custom-design-checkout-session', payload);
-            const sessionId = res.data.sessionId;
+            const sessionId = res?.data?.sessionId;
+
+            if (!sessionId) {
+                toast.error('Failed to create payment session');
+                return;
+            }
+
+            toast.success('Redirecting to payment gateway...');
             await stripe.redirectToCheckout({ sessionId });
+
         } catch (error) {
-            if (error.response.data) {
-                toast.error(error.response.data.message);
-            } else if (error.response.data.message) {
+            if (error?.response?.data?.message) {
                 toast.error(error.response.data.message);
             } else {
                 toast.error('Failed to process payment');
-
             }
         }
     };
+
 
     return (
         <div className="p-10 text-white min-h-screen flex flex-col items-center gap-8">
@@ -191,13 +203,7 @@ const CustomClothesDesigner = () => {
 
             {/* Order */}
             <div className="w-full max-w-md grid gap-4">
-                <input
-                    type="text"
-                    placeholder="Your Name"
-                    className="px-4 py-2 rounded bg-gray-50 text-black"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                />
+
                 <select
                     className="px-4 py-2 rounded bg-gray-50 text-black"
                     value={size}
@@ -212,7 +218,7 @@ const CustomClothesDesigner = () => {
                     Price: ₹{(apparelPrices[selectedApparel] / 100).toFixed(2)}
                 </p>
                 <button
-                    className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded text-white font-semibold"
+                    className="bg-green-600 cursor-pointer hover:bg-green-700 px-6 py-2 rounded text-white font-semibold"
                     onClick={handleOrderAndPayment}
                 >
                     Place Order

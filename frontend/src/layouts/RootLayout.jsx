@@ -12,9 +12,9 @@ export const RootLayout = () => {
     return (
         <>
             {!shouldHideLayout && (
-                <div className="w-full " >
-                    <Navbar />
-                </div>
+
+                <Navbar />
+
             )}
 
             <div className={shouldHideLayout ? "min-h-screen" : "min-h-96 pt-14 sm:pt-20"}>

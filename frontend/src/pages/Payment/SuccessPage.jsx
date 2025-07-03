@@ -1,24 +1,42 @@
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
+import api from '../../config/axiosInstance';
 
-import React from "react";
-import { Link } from "react-router-dom";
-import { CheckCircle } from "lucide-react";
+function SuccessPage() {
+    const [searchParams] = useSearchParams();
+    const sessionId = searchParams.get('session_id');
 
-const SuccessPage = () => {
+    useEffect(() => {
+        if (!sessionId) return;
+
+        const saveOrder = async () => {
+            try {
+                const res = await api.post(
+                    'public/save-custom-order',
+                    { sessionId },
+                    { withCredentials: true }
+                );
+                if (res.data.success) {
+                    toast.success('Order saved successfully!');
+                } else {
+                    toast.warning('Payment succeeded, but order not saved');
+                }
+            } catch (err) {
+                toast.error('Error saving order');
+                console.error(err);
+            }
+        };
+
+        saveOrder();
+    }, []);
+
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black to-gray-900 text-white px-4">
-            <CheckCircle className="text-green-500 w-20 h-20 mb-6" />
-            <h1 className="text-3xl font-bold mb-4">Payment Successful!</h1>
-            <p className="text-gray-300 mb-6 text-center">
-                Thank you for your purchase. Your order has been processed successfully.
-            </p>
-            <Link
-                to="/products"
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white font-medium transition"
-            >
-                Continue Shopping
-            </Link>
+        <div className="text-white min-h-screen flex flex-col items-center justify-center">
+            <h1 className="text-3xl font-bold mb-4">✅ Payment Successful!</h1>
+            <p className="text-lg">Thank you for your purchase. We’ll start working on your custom order!</p>
         </div>
     );
-};
+}
 
 export default SuccessPage;
