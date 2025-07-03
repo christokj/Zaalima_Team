@@ -82,14 +82,14 @@ const FeatureCard = ({ title, icon, description, index }) => {
 
 const OurFeatures = () => {
     return (
-        <section className="px-6 my-16 m-30">
-            <h2 className="text-3xl font-bold text-center text-white mb-10">
+        <section className="px-4 sm:px-6 my-16">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center text-white mb-10">
                 Why Shop With Us?
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 justify-items-center">
                 {/* Left tall card */}
-                <div className="w-full md:w-[90%] mt-28 ms-20  ">
+                <div className="w-full md:w-[90%] md:mt-28 md:ms-20">
                     <FeatureCard
                         index={0}
                         title={features[0].title}
@@ -115,7 +115,7 @@ const OurFeatures = () => {
                 </div>
 
                 {/* Right tall card */}
-                <div className="w-full md:w-[90%] mt-28 me-20">
+                <div className="w-full md:w-[90%] md:mt-28 md:me-20">
                     <FeatureCard
                         index={3}
                         title={features[3].title}
@@ -125,6 +125,7 @@ const OurFeatures = () => {
                 </div>
             </div>
         </section>
+
     );
 };
 

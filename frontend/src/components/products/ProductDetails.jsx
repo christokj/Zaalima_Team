@@ -21,9 +21,9 @@ const ProductDetails = ({ product }) => {
             });
 
             if (res.data.success) {
-                alert("Product added to cart!");
+                toast.success("Product added to cart!");
             } else {
-                alert("Failed to add to cart.");
+                toast.error("Failed to add product to cart.");
             }
         } catch (err) {
             toast.warning('Please login to add products to cart');
@@ -88,12 +88,12 @@ const ProductDetails = ({ product }) => {
                         </span>
                     </div>
                     <div>
-                        <button
+                        {/* <button
                             onClick={handleBuyNow}
                             className="mt-4 mr-2 px-6 cursor-pointer py-2 bg-blue-600 hover:bg-blue-700 rounded-full text-white transition text-sm font-semibold"
                         >
                             Buy Now
-                        </button>
+                        </button> */}
                         <button
                             onClick={handleAddToCart}
                             className="mt-4 px-6 py-2 cursor-pointer bg-green-600 hover:bg-green-700 rounded-full text-white transition text-sm font-semibold"

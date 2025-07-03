@@ -199,25 +199,33 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
 export const toggleUserStatus = async (req: Request, res: Response) => {
     try {
         const userId = req.params.id;
+        console.log("userId:", userId);
 
         const user = await User.findById(userId);
-
         if (!user) {
-            res.status(404).json({ success: false, message: "User not found" });
-            return
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
         }
 
+        // Toggle active status
         user.active = !user.active;
-        await user.save();
+
+        // Skip validation for required fields like 'address'
+        await user.save({ validateBeforeSave: false });
 
         res.status(200).json({
             success: true,
             message: `User has been ${user.active ? "activated" : "frozen"}`,
-            active: user.active,
+            active: user.active
         });
     } catch (error) {
         console.error("Toggle user error:", error);
-        res.status(500).json({ success: false, message: "Server error" });
+        res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
     }
 };
 // Extend Request type
@@ -353,9 +361,51 @@ export const getProduct = async (req: Request, res: Response) => {
 
 export const getAllDesignOrders = async (req: Request, res: Response) => {
     try {
-        const orders = await DesignOrder.find().sort({ createdAt: -1 });
+        const orders = await DesignOrder.find()
+            .sort({ createdAt: -1 })
+            .populate('userId', 'name email mobile address'); // only these fields from user
+
         res.status(200).json({ success: true, data: orders });
     } catch (err) {
         res.status(500).json({ success: false, message: 'Fetching orders failed' });
+    }
+};
+
+export const updateDesignOrderStatus = async (req: Request, res: Response) => {
+    try {
+        const { orderId } = req.params;
+        const { status } = req.body;
+
+        const updated = await DesignOrder.findByIdAndUpdate(orderId, { status }, { new: true });
+
+        if (!updated) {
+            res.status(404).json({ success: false, message: 'Order not found' });
+            return
+        }
+
+        res.status(200).json({ success: true, message: 'Status updated', data: updated });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to update status' });
+    }
+};
+
+export const addProduct = async (req: Request, res: Response) => {
+    try {
+        const product = new Product(req.body);
+        await product.save();
+        res.status(201).json({ success: true, message: 'Product added', data: product });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to add product', error: err.message });
+    }
+};
+
+
+export const updateProduct = async (req: Request, res: Response) => {
+    try {
+        const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!updated) res.status(404).json({ success: false, message: 'Product not found' });
+        res.status(200).json({ success: true, message: 'Product updated', data: updated });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'Failed to update product', error: err.message });
     }
 };

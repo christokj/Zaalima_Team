@@ -16,7 +16,7 @@ const UsersList = () => {
 
     const toggleUser = async (id) => {
         try {
-            await api.patch(`/admin/users/${id}/toggle`);
+            await api.put(`/admin/users/${id}/toggle`);
             fetchUsers();
         } catch (err) {
             console.error("Toggle user error:", err);

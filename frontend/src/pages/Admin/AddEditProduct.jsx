@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../config/axiosInstance';
+import { toast } from 'sonner';
 
 const AddEditProduct = () => {
     const [form, setForm] = useState({
@@ -12,19 +13,25 @@ const AddEditProduct = () => {
         brand: '',
         size: '',
         category: '',
-        photoUrl: ''
+        photoUrl: '',
     });
 
     const [uploading, setUploading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const { id } = useParams();
     const navigate = useNavigate();
 
+    // Fetch product if editing
     useEffect(() => {
         if (id) {
-            api.get(`/admin/getProduct/${id}`).then((res) => setForm(res.data.data));
+            api
+                .get(`/admin/getProduct/${id}`)
+                .then((res) => setForm(res.data.data))
+                .catch(() => toast.error('Failed to load product'));
         }
     }, [id]);
 
+    // Handle image upload
     const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -38,9 +45,10 @@ const AddEditProduct = () => {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setForm((prev) => ({ ...prev, photoUrl: res.data.imageUrl }));
+            toast.success('Image uploaded');
         } catch (err) {
             console.error('Image upload error:', err);
-            alert('Image upload failed');
+            toast.error('Image upload failed');
         } finally {
             setUploading(false);
         }
@@ -51,17 +59,30 @@ const AddEditProduct = () => {
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
+    // Submit product form
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (!form.photoUrl) {
+            toast.error('Please upload a product image');
+            return;
+        }
+
         try {
+            setSubmitting(true);
             if (id) {
                 await api.put(`/admin/products/${id}`, form);
+                toast.success('Product updated successfully!');
             } else {
                 await api.post('/admin/products', form);
+                toast.success('Product added successfully!');
             }
             navigate('/admin/products');
         } catch (err) {
             console.error('Save product error:', err);
+            toast.error(err?.response?.data?.message || 'Failed to save product');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -73,7 +94,6 @@ const AddEditProduct = () => {
                 </h1>
 
                 <form onSubmit={handleSubmit} className="grid gap-5 text-white font-medium">
-
                     <div>
                         <label className="mb-1 block">Title</label>
                         <input
@@ -200,9 +220,10 @@ const AddEditProduct = () => {
 
                     <button
                         type="submit"
+                        disabled={submitting}
                         className="w-full mt-4 px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-semibold transition duration-300"
                     >
-                        {id ? 'Update Product' : 'Add Product'}
+                        {submitting ? 'Submitting...' : id ? 'Update Product' : 'Add Product'}
                     </button>
                 </form>
             </div>

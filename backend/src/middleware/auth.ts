@@ -4,7 +4,7 @@ import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import { ENV } from '../config/env';
 
 export interface AuthenticatedRequest extends Request {
-    user?: JwtPayload & { userId: string }; // include your userId here
+    user?: JwtPayload & { userId: string };
 }
 
 const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {

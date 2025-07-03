@@ -22,7 +22,7 @@ const containsWeakPattern = (str) => {
 
 function SignupPage() {
     const [formData, setFormData] = useState({
-        email: '', name: '', age: '', mobile: '', password: '', confirmPassword: ''
+        email: '', name: '', age: '', mobile: '', address: '', password: '', confirmPassword: ''
     });
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
@@ -55,6 +55,9 @@ function SignupPage() {
         } else if (/^(.)\1{9}$/.test(formData.mobile)) {
             newErrors.mobile = 'All digits cannot be same';
         }
+        if (!formData.address.trim() || formData.address.trim().length < 5) {
+            newErrors.address = 'Address must be at least 5 characters';
+        }
 
         if (!formData.password) newErrors.password = 'Password is required';
         else if (formData.password.length < 8 || formData.password.length > 64) {
@@ -86,20 +89,26 @@ function SignupPage() {
                 name: formData.name.trim(),
                 age: Number(formData.age),
                 mobile: formData.mobile,
+                address: formData.address.trim(),
                 password: formData.password,
             });
 
             toast.success(res.data.message);
             navigate('/login-page');
         } catch (err) {
-            if (err.response?.data?.errors) {
+            if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
                 const apiErrors = {};
-                err.response.data.errors.forEach((e) => (apiErrors[e.field] = e.message));
+                err.response.data.errors.forEach((e) => {
+                    apiErrors[e.field] = e.message;
+                    toast.error(`${e.field}: ${e.message}`);
+                });
                 setErrors(apiErrors);
-                toast.error('Please fix the errors');
+            } else if (err.response?.data?.message) {
+                toast.error(err.response.data.message);
             } else {
-                toast.error(err.response?.data?.message || 'Signup failed');
+                toast.error('Signup failed');
             }
+
         } finally {
             setLoading(false);
         }
@@ -128,6 +137,17 @@ function SignupPage() {
                             {errors[name] && <p className="text-red-400 text-sm">{errors[name]}</p>}
                         </div>
                     ))}
+                    <div>
+                        <input
+                            type="text"
+                            name="address"
+                            placeholder="Address"
+                            onChange={handleChange}
+                            value={formData.address}
+                            className="w-full p-3 rounded-lg border border-white/20 bg-white/10 text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {errors.address && <p className="text-red-400 text-sm">{errors.address}</p>}
+                    </div>
 
                     {/* Password */}
                     <div className="relative">

@@ -49,13 +49,14 @@ const Navbar = () => {
   const navLinks = [
     { title: "Home", path: "/" },
     { title: "Products", path: "/products" },
+    { title: "Profile", path: "/profile" },
     isAuthenticated
       ? { title: "Logout", path: "#", onClick: handleLogout }
       : { title: "Login", path: "/login-page" },
   ];
 
   return (
-    <nav className={`${styles.paddingX} w-full flex items-center py-5 fixed top-0 z-50 bg-transparent backdrop-blur-xs`}>
+    <nav className={`${styles.paddingX} w-full flex items-center fixed top-0 z-50 bg-transparent backdrop-blur-xs`}>
       <div className="w-full flex justify-between items-center max-w-7xl mx-auto mt-5">
         <Link to="/" className="flex items-center gap-2">
           <img

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IDesignOrder extends Document {
-    customerName: string;
+    userId: mongoose.Schema.Types.ObjectId;
     apparel: string;
     size: string;
     designImageUrl: string;
@@ -14,7 +14,7 @@ export interface IDesignOrder extends Document {
 
 const DesignOrderSchema: Schema = new Schema(
     {
-        customerName: { type: String, required: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
         apparel: { type: String, required: true },
         size: { type: String, required: true },
         designImageUrl: { type: String, required: true },
@@ -23,6 +23,11 @@ const DesignOrderSchema: Schema = new Schema(
             y: { type: Number, required: true },
         },
         scale: { type: Number, required: true },
+        status: {
+            type: String,
+            enum: ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'],
+            default: 'Pending',
+        },
     },
     { timestamps: true }
 );
